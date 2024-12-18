@@ -142,44 +142,45 @@ class Discretiser(BaseEstimator, TransformerMixin):
     def fit(self, data: np.ndarray) -> "Discretiser":
         """
         Fit where split points are based on the input data.
-
+    
         Args:
             data (np.ndarray): values used to learn where split points exist.
-
+    
         Returns:
             self
-
+    
         Raises:
             RuntimeError: If an attempt to fit fixed numeric_split_points is made.
         """
-
-        x = data.flatten()
-        x.sort()
-
+        x = np.array(data, dtype=float)  # Ensure numeric data
+        if x.ndim > 1:
+            x = x.flatten()
+    
         if self.method == "uniform":
             bucket_width = (np.max(x) - np.min(x)) / self.num_buckets
             self.numeric_split_points = [
                 np.min(x) + bucket_width * (n + 1) for n in range(self.num_buckets - 1)
             ]
-
+    
         elif self.method == "quantile":
             bucket_width = 1.0 / self.num_buckets
             quantiles = [bucket_width * (n + 1) for n in range(self.num_buckets - 1)]
-            self.numeric_split_points = np.quantile(x, quantiles)
-
+            self.numeric_split_points = np.quantile(x, quantiles, method="linear")
+    
         elif self.method == "outlier":
             self.numeric_split_points = np.quantile(
-                x, [self.outlier_percentile, 1 - self.outlier_percentile]
+                x, [self.outlier_percentile, 1 - self.outlier_percentile], method="linear"
             )
-
+    
         elif self.method == "percentiles":
             percentiles = [p * 100 for p in self.percentile_split_points]
             self.numeric_split_points = np.percentile(x, percentiles)
-
+    
         else:
-            raise RuntimeError("cannot call fit using method=fixed")
-
+            raise RuntimeError("Cannot call fit using method=fixed")
+    
         return self
+
 
     def transform(self, data: np.ndarray) -> np.ndarray:
         """
