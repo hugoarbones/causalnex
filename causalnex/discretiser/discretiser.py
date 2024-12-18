@@ -152,28 +152,23 @@ class Discretiser(BaseEstimator, TransformerMixin):
         Raises:
             RuntimeError: If an attempt to fit fixed numeric_split_points is made.
         """
-        x = np.array(data, dtype=float)  # Ensure numeric data
-        if x.ndim > 1:
-            x = x.flatten()
+        x = np.asarray(data, dtype=float).flatten()  # Ensure numeric data and flatten
     
         if self.method == "uniform":
-            bucket_width = (np.max(x) - np.min(x)) / self.num_buckets
-            self.numeric_split_points = [
-                np.min(x) + bucket_width * (n + 1) for n in range(self.num_buckets - 1)
-            ]
+            min_val, max_val = x.min(), x.max()
+            step = (max_val - min_val) / (self.num_buckets - 1)
+            self.numeric_split_points = np.arange(min_val + step, max_val, step)
     
         elif self.method == "quantile":
-            bucket_width = 1.0 / self.num_buckets
-            quantiles = [bucket_width * (n + 1) for n in range(self.num_buckets - 1)]
+            quantiles = np.linspace(0, 1, self.num_buckets)
             self.numeric_split_points = np.quantile(x, quantiles, method="linear")
     
         elif self.method == "outlier":
-            self.numeric_split_points = np.quantile(
-                x, [self.outlier_percentile, 1 - self.outlier_percentile], method="linear"
-            )
+            lower, upper = self.outlier_percentile, 1 - self.outlier_percentile
+            self.numeric_split_points = np.quantile(x, [lower, upper], method="linear")
     
         elif self.method == "percentiles":
-            percentiles = [p * 100 for p in self.percentile_split_points]
+            percentiles = np.array(self.percentile_split_points) * 100
             self.numeric_split_points = np.percentile(x, percentiles)
     
         else:
